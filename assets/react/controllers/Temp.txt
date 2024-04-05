@@ -1,0 +1,55 @@
+import React from "react";
+import { AppBar, Grid, IconButton, Toolbar } from "@mui/material";
+import StoreIcon from "@mui/icons-material/store";
+import Badge from "@mui/material/Badge";
+import { visit } from "../../utils";
+import { ShoppingBasket } from "@mui/icons-material";
+import { ShoppingCartItem } from "../hooks/useShoppingCart";
+
+function Header({ shoppingCart }) {
+  const showHome = (): void => {
+    visit("/");
+  };
+
+  const showsShoppingCart = () => {
+    visit("/shopping-cart");
+  };
+
+  const calculateTotalQuantity = () => {
+    return shoppingCart?.items
+      ?.map((item: ShoppingCartItem) => item.quantity)
+      .reduce((prev: number, curr: number) => prev + curr, 0);
+  };
+
+  return (
+    <AppBar position="static">
+      <Toolbar>
+        <Grid
+          container
+          justifyContent="space-between"
+          alignContent="center"
+          style={{ width: "100%" }}
+        >
+          <Grid item>
+            <IconButton color="inherit" onClick={showHome}>
+              <StoreIcon />
+            </IconButton>
+          </Grid>
+
+          <Grid item>
+            <IconButton color="inherit" onClick={showsShoppingCart}>
+              <Badge badgeContent={calculateTotalQuantity()} color="secondary">
+                <ShoppingBasket />
+              </Badge>
+            </IconButton>
+          </Grid>
+        </Grid>
+      </Toolbar>
+    </AppBar>
+  );
+}
+
+export default Header;
+
+Clear the browser
+ Cmd+Shift+R
