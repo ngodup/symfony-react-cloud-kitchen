@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Entity\UserProfile;
 //use App\Form\UserType; // Consider using a form for registration
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -35,13 +36,8 @@ class UserController extends AbstractController
     }
 
     #[Route('/register', name: 'register_user', methods: ['POST'])]
-    public function register(Request $request): JsonResponse
+    public function register(Request $request, EntityManagerInterface $entityManager, UserPasswordHasherInterface $passwordHasher): JsonResponse
     {
-        // Consider using a form to handle validation and user input
-        // $form = $this->createForm(UserType::class);
-        // $form->handleRequest($request);
-
-        // Extract data from request (assuming direct JSON)
         $data = json_decode($request->getContent(), true);
 
         $email = $data['email'] ?? null;
@@ -55,27 +51,51 @@ class UserController extends AbstractController
         }
 
         // Check if the email already exists
-        $emailExist = $this->userRepository->findOneByEmail($email);
+        $userRepository = $entityManager->getRepository(User::class);
+        $emailExist = $userRepository->findOneBy(['email' => $email]);
 
         if ($emailExist) {
             return new JsonResponse([
                 'status' => false,
-                'message' => 'This email already exists, please change it'
+                'message' => 'This email already exists, please use a different one'
             ], JsonResponse::HTTP_CONFLICT);
-        } else {
-            // Create new user with hashed password
-            $user = new User();
-            $user->setEmail($email);
-            $user->setPassword($this->passwordHasher->hashPassword($user, $password));
-
-            $this->manager->persist($user);
-            $this->manager->flush();
-
-            return new JsonResponse([
-                'status' => true,
-                'message' => 'The user has been created successfully'
-            ], JsonResponse::HTTP_CREATED);
         }
+
+        // Create new user with hashed password
+        $user = new User();
+        $user->setEmail($email);
+        $user->setPassword($passwordHasher->hashPassword($user, $password));
+
+        // Create user profile and link it to the user
+        $profile = new UserProfile();
+        $profile->setUser($user); // Set the association
+
+        // Optionally set other profile details if they exist in the request
+        // Set profile details from the request, checking each for presence before setting
+        if (isset($data['prenom'])) {
+            $profile->setPrenom($data['prenom']);
+        }
+        if (isset($data['nom'])) {
+            $profile->setNom($data['nom']);
+        }
+        if (isset($data['address'])) {
+            $profile->setAddress($data['address']);
+        }
+        if (isset($data['ville'])) {
+            $profile->setVille($data['ville']);
+        }
+        // Add more fields as necessary
+
+        $entityManager->persist($user);
+        $entityManager->persist($profile);
+        $entityManager->flush();
+
+        return new JsonResponse([
+            'status' => true,
+            'message' => 'User registration successful',
+            'userId' => $user->getId(),  // Optionally return the user ID or other confirmation details
+            'profileId' => $profile->getId() // Optionally return the profile ID
+        ], JsonResponse::HTTP_CREATED);
     }
 
     #[Route('/api/me', name: 'api_user_profile', methods: ['GET'])]
