@@ -4,14 +4,14 @@ namespace App\Controller;
 
 use App\Entity\User;
 //use App\Form\UserType; // Consider using a form for registration
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
-use Symfony\Component\Routing\Annotation\Route;
-use Doctrine\ORM\EntityManagerInterface;
 use App\Repository\UserRepository;
-
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
 class UserController extends AbstractController
 {
@@ -76,5 +76,30 @@ class UserController extends AbstractController
                 'message' => 'The user has been created successfully'
             ], JsonResponse::HTTP_CREATED);
         }
+    }
+
+    #[Route('/api/me', name: 'api_user_profile', methods: ['GET'])]
+    public function userProfile(TokenStorageInterface $tokenStorage): JsonResponse
+    {
+        $token = $tokenStorage->getToken();
+        if (null === $token) {
+            return $this->json(['message' => 'No authentication token found.'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
+        $user = $token->getUser();
+
+        // Check if the user is an instance of your User entity
+        if (!$user instanceof User) {  // Use your User entity class here
+            return $this->json(['message' => 'Token does not contain a valid user.'], JsonResponse::HTTP_UNAUTHORIZED);
+        }
+
+        // Now it's safe to call User-specific methods like getId and getEmail
+        return $this->json([
+            'user' => [
+                'id' => $user->getId(),
+                'email' => $user->getEmail(),
+                'roles' => $user->getRoles(),
+            ]
+        ]);
     }
 }

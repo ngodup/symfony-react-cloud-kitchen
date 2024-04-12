@@ -10,7 +10,6 @@ export interface Product {
 
 export default function useProducts(): Product[] {
   const [products, setProducts] = useState<Product[]>([]);
-  debugger;
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -19,7 +18,6 @@ export default function useProducts(): Product[] {
         setProducts(data);
       } catch (error) {
         // Handle the error here
-        debugger;
       }
     };
 

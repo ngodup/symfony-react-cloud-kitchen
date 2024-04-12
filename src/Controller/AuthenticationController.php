@@ -3,57 +3,67 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use Psr\Log\LoggerInterface;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-// use Symfony\Component\Security\Core\Exception\CustomUserMessageAuthenticationException;
-use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 
 class AuthenticationController extends AbstractController
 {
     private JWTTokenManagerInterface $jwtManager;
     private UserPasswordHasherInterface $passwordHasher;
     private EntityManagerInterface $entityManager;
+    // Add LoggerInterface to your constructor and initialize
+    private LoggerInterface $logger;
 
-    public function __construct(JWTTokenManagerInterface $jwtManager, UserPasswordHasherInterface $passwordHasher, EntityManagerInterface $entityManager)
+    public function __construct(JWTTokenManagerInterface $jwtManager, UserPasswordHasherInterface $passwordHasher, EntityManagerInterface $entityManager, LoggerInterface $logger)
     {
         $this->jwtManager = $jwtManager;
         $this->passwordHasher = $passwordHasher;
         $this->entityManager = $entityManager;
+        $this->logger = $logger;
     }
 
-    #[Route('/api/login', name: 'app_login', methods: ['POST'])]
+    #[Route('/login', name: 'app_login_form', methods: ['GET'])]
+    public function index(Request $request): Response
+    {
+        // Renders the initial HTML for the React app
+        $this->logger->info('Login Request: ', ['data' => $request->getContent()]);
+        return $this->render('authentication/index.html.twig', [
+            'controller_name' => 'AuthentiationController',
+        ]);
+    }
+
+    #[Route('/api/login', name: 'api_login', methods: ['POST'])]
     public function login(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        $username = $data['username'] ?? null;
-        $password = $data['password'] ?? null;
+        $email = $data['email'] ?? '';
+        $password = $data['password'] ?? '';
 
-        if (!$username || !$password) {
-            return new JsonResponse([
-                'status' => false,
-                'message' => 'Username and password are required'
-            ], JsonResponse::HTTP_BAD_REQUEST);
+        if (!$email || !$password) {
+            return new JsonResponse(['status' => false, 'message' => 'Email and password are required'], JsonResponse::HTTP_BAD_REQUEST);
         }
 
-        $userRepository = $this->entityManager->getRepository(User::class);
-        $user = $userRepository->findOneBy(['username' => $username]);
+        try {
+            $userRepository = $this->entityManager->getRepository(User::class);
+            $user = $userRepository->findOneBy(['email' => $email]);
 
-        if (!$user || !$this->passwordHasher->isPasswordValid($user, $password)) {
-            return new JsonResponse([
-                'status' => false,
-                'message' => 'Invalid username or password'
-            ], JsonResponse::HTTP_UNAUTHORIZED);
+            if (!$user || !$this->passwordHasher->isPasswordValid($user, $password)) {
+                return new JsonResponse(['status' => false, 'message' => 'Invalid email or password'], JsonResponse::HTTP_UNAUTHORIZED);
+            }
+
+            $token = $this->jwtManager->create($user);
+            return new JsonResponse(['status' => true, 'token' => $token], JsonResponse::HTTP_OK);
+        } catch (\Exception $e) {
+            $this->logger->error('Login failed: ' . $e->getMessage());
+            return new JsonResponse(['status' => false, 'message' => 'Server error: ' . $e->getMessage()], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        $token = $this->jwtManager->create($user);
-
-        return new JsonResponse([
-            'status' => true,
-            'token' => $token,
-        ], JsonResponse::HTTP_OK);
     }
 }
