@@ -27,14 +27,17 @@ security:
       jwt: ~ # This enables JWT on all routes under /api
 
   access_control:
-    - { path: ^/api/login$, roles: IS_ANONYMOUS }
+    # Grant access to product listing for anonymous users
+    - { path: ^/api/login, roles: PUBLIC_ACCESS }
+    - { path: ^/api/products, roles: PUBLIC_ACCESS, methods: GET }
     - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 
-when@test:
-  security:
-    password_hashers:
-      Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
-        algorithm: auto
-        cost: 4
-        time_cost: 3
-        memory_cost: 10
+    # # Define roles for different access levels
+    # - { roles: ROLE_PRODUCT_VIEWER } # View product details (GET on /api/products/[id])
+    # - { roles: ROLE_PRODUCT_EDITOR, attributes: { is_admin: true } } # Edit products (POST, PUT, DELETE on /api/products)
+
+    # Restrict access to other API endpoints based on roles
+    # - { path: ^/api, roles: ROLE_ADMIN } # Access other admin functionalities (replace with your specific paths)
+
+    # Login endpoint remains anonymous
+    # - { path: ^/api/login, roles: IS_ANONYMOUS }

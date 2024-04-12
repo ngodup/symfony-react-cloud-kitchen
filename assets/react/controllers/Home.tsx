@@ -6,7 +6,7 @@ import { Box } from "@mui/material";
 
 function Home() {
   const { addToShoppingCart, shoppingCart } = useShoppingCart();
-
+  debugger;
   return (
     <>
       <Box style={{ margin: 0 }}>

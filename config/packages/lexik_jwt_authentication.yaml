@@ -1,7 +1,6 @@
 # config/packages/lexik_jwt_authentication.yaml
 lexik_jwt_authentication:
   secret_key: "%env(resolve:JWT_SECRET_KEY)%"
-  # If using public/private key pair
-  #public_key: "%env(resolve:JWT_PUBLIC_KEY_PATH)%"
-  # Other configurations...
+  public_key: "%env(resolve:JWT_PUBLIC_KEY)%" # required for token verification
+  pass_phrase: "%env(JWT_PASSPHRASE)%" # required for token creation
   token_ttl: 3600
